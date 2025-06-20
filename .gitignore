@@ -1,0 +1,10 @@
+#python
+*.mp3
+*.data
+*.csv
+*.h5
+*.json
+*.log
+*.pkl
+
+

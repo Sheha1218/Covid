@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live Face Mask Detection</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      background: #f4f4f4; 
+      margin: 0;
+      padding: 20px;
+    }
+    h2 { 
+      margin-top: 20px; 
+      color: #333;
+    }
+    video, canvas { 
+      margin: 20px auto; 
+      border-radius: 10px; 
+      border: 2px solid #007bff; 
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      display: block;
+    }
+    button { 
+      margin: 20px auto; 
+      padding: 12px 24px; 
+      font-size: 16px; 
+      background-color: #28a745; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .result { 
+      margin: 20px auto; 
+      font-size: 20px; 
+      font-weight: bold; 
+      color: #333;
+    }
+    .confidence {
+      font-size: 16px;
+      color: #555;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Live Face Mask Detection</h2>
+    <video id="video" width="400" height="400" autoplay muted></video>
+    <canvas id="canvas" width="224" height="224" style="display: none;"></canvas>
+    <button onclick="startDetection()">Start Real-Time Detection</button>
+    <div class="result" id="result">Status: --</div>
+    <div class="confidence" id="confidence">Confidence: --</div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const resultText = document.getElementById('result');
+    const confidenceText = document.getElementById('confidence');
+    let detecting = false;
+    let detectionInterval;
+
+    // Access webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { 
+        video.srcObject = stream; 
+      })
+      .catch(err => { 
+        console.error("Webcam Error:", err); 
+        resultText.innerText = "Error: Could not access webcam.";
+      });
+
+    function startDetection() {
+      if (detecting) {
+        clearInterval(detectionInterval);
+        detecting = false;
+        resultText.innerText = "Status: Detection stopped";
+        return;
+      }
+
+      detecting = true;
+      resultText.innerText = "Status: Detecting...";
+
+      // Detect every 1.5 seconds
+      detectionInterval = setInterval(() => {
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/png');
+
+        fetch('/detect_mask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: imageData })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) {
+            resultText.innerText = "Error: " + data.error;
+          } else {
+            resultText.innerText = `Status: ${data.result}`;
+            confidenceText.innerText = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+          }
+        })
+        .catch(err => {
+          console.error("Error:", err);
+          resultText.innerText = "Error: Detection failed";
+        });
+      }, 1500);
+    }
+  </script>
+</body>
+</html>
